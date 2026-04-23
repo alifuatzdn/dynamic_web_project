@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model City {
+  id         Int      @id @default(autoincrement())
+  name       String   @unique @db.VarChar(100)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  fromFlights Flight[] @relation("FromCity")
+  toFlights   Flight[] @relation("ToCity")
+
+  @@map("cities")
+}
+
+model Admin {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique @db.VarChar(100)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("admins")
+}
+
+model Flight {
+  id             BigInt   @id @default(autoincrement())
+  flightNumber   String   @unique @map("flight_number") @db.VarChar(50)
+  fromCityId     Int      @map("from_city")
+  toCityId       Int      @map("to_city")
+  departureTime  DateTime @map("departure_time")
+  arrivalTime    DateTime @map("arrival_time")
+  price          Decimal  @db.Decimal(10, 2)
+  seatsTotal     Int      @map("seats_total")
+  seatsAvailable Int      @map("seats_available")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  fromCity City @relation("FromCity", fields: [fromCityId], references: [id])
+  toCity   City @relation("ToCity", fields: [toCityId], references: [id])
+  tickets  Ticket[]
+
+  @@unique([fromCityId, departureTime], map: "uq_flights_from_departure")
+  @@unique([toCityId, arrivalTime], map: "uq_flights_to_arrival")
+  @@map("flights")
+}
+
+model Ticket {
+  id             BigInt       @id @default(autoincrement())
+  flightId       BigInt       @map("flight_id")
+  passengerName  String       @map("passenger_name") @db.VarChar(150)
+  passengerEmail String       @map("passenger_email") @db.VarChar(150)
+  passengerPhone String       @map("passenger_phone") @db.VarChar(50)
+  seatCount      Int          @map("seat_count")
+  totalPrice     Decimal      @map("total_price") @db.Decimal(10, 2)
+  status         TicketStatus @default(CONFIRMED)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  flight Flight @relation(fields: [flightId], references: [id])
+
+  @@map("tickets")
+}
+
+enum TicketStatus {
+  CONFIRMED
+  CANCELLED
+}

@@ -1,0 +1,139 @@
+const API_BASE_URL = "http://localhost:5000/api";
+
+export async function getCities() {
+  const response = await fetch(`${API_BASE_URL}/cities`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch cities");
+  }
+  return response.json();
+}
+
+export async function searchFlights({ from_city, to_city, date }) {
+  const params = new URLSearchParams();
+  if (from_city) params.append("from_city", from_city);
+  if (to_city) params.append("to_city", to_city);
+  if (date) params.append("date", date);
+
+  const response = await fetch(`${API_BASE_URL}/flights/search?${params.toString()}`);
+  if (!response.ok) {
+    throw new Error("Failed to search flights");
+  }
+  return response.json();
+}
+
+export async function createTicket(payload) {
+  const response = await fetch(`${API_BASE_URL}/tickets`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to create ticket");
+  }
+
+  return data;
+}
+
+export async function adminLogin({ username, password }) {
+  const response = await fetch(`${API_BASE_URL}/admin/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ username, password }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Admin login failed");
+  }
+
+  return data;
+}
+
+export async function adminRegister({ username, password }) {
+  const response = await fetch(`${API_BASE_URL}/admin/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ username, password }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Admin register failed");
+  }
+
+  return data;
+}
+
+export async function getAllFlights() {
+  const response = await fetch(`${API_BASE_URL}/flights`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch flights");
+  }
+  return response.json();
+}
+
+function adminHeaders(credentials) {
+  return {
+    "Content-Type": "application/json",
+    "x-admin-username": credentials.username,
+    "x-admin-password": credentials.password,
+  };
+}
+
+export async function createFlightAdmin(payload, credentials) {
+  const response = await fetch(`${API_BASE_URL}/flights/admin`, {
+    method: "POST",
+    headers: adminHeaders(credentials),
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to create flight");
+  }
+
+  return data;
+}
+
+export async function updateFlightAdmin(id, payload, credentials) {
+  const response = await fetch(`${API_BASE_URL}/flights/admin/${id}`, {
+    method: "PUT",
+    headers: adminHeaders(credentials),
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to update flight");
+  }
+
+  return data;
+}
+
+export async function deleteFlightAdmin(id, credentials) {
+  const response = await fetch(`${API_BASE_URL}/flights/admin/${id}`, {
+    method: "DELETE",
+    headers: adminHeaders(credentials),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to delete flight");
+  }
+
+  return data;
+}
