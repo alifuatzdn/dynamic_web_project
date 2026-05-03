@@ -7,7 +7,7 @@ const {
   updateFlight,
   deleteFlight,
 } = require("../controllers/flightController");
-const adminAuth = require("../middleware/adminAuth");
+const userAuth = require("../middleware/userAuth");
 
 const router = express.Router();
 
@@ -15,9 +15,9 @@ router.get("/", listFlights);
 router.get("/search", searchFlights);
 router.get("/:id", getFlightById);
 
-// Admin-only flight management endpoints.
-router.post("/admin", adminAuth, createFlight);
-router.put("/admin/:id", adminAuth, updateFlight);
-router.delete("/admin/:id", adminAuth, deleteFlight);
+// User-only flight management endpoints.
+router.post("/user", userAuth, createFlight);
+router.put("/user/:id", userAuth, updateFlight);
+router.delete("/user/:id", userAuth, deleteFlight);
 
 module.exports = router;

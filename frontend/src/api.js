@@ -39,8 +39,8 @@ export async function createTicket(payload) {
   return data;
 }
 
-export async function adminLogin({ username, password }) {
-  const response = await fetch(`${API_BASE_URL}/admin/login`, {
+export async function userLogin({ username, password }) {
+  const response = await fetch(`${API_BASE_URL}/user/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -48,17 +48,18 @@ export async function adminLogin({ username, password }) {
     body: JSON.stringify({ username, password }),
   });
 
+  console.log(123);
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.message || "Admin login failed");
+    throw new Error(data.message || "User login failed");
   }
 
   return data;
 }
 
-export async function adminRegister({ username, password }) {
-  const response = await fetch(`${API_BASE_URL}/admin/register`, {
+export async function userRegister({ username, password }) {
+  const response = await fetch(`${API_BASE_URL}/user/register`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -69,7 +70,7 @@ export async function adminRegister({ username, password }) {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.message || "Admin register failed");
+    throw new Error(data.message || "User register failed");
   }
 
   return data;
@@ -136,4 +137,19 @@ export async function deleteFlightAdmin(id, credentials) {
   }
 
   return data;
+}
+export async function getUserTickets(username) {
+  const response = await fetch(`${API_BASE_URL}/tickets/user/${username}`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch user tickets");
+  }
+  return response.json();
+}
+
+export async function getAllTickets() {
+  const response = await fetch(`${API_BASE_URL}/tickets/all`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch all tickets");
+  }
+  return response.json();
 }

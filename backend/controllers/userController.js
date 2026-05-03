@@ -1,12 +1,12 @@
 const bcrypt = require("bcryptjs");
 const prisma = require("../config/prisma");
 
-async function registerAdmin(req, res) {
+async function registerUser(req, res) {
   try {
     const { username, password } = req.body;
 
     if (!username || !password) {
-      return res.status(400).json({ message: "username and password are required." });
+      return res.status(400).json({ message: "Username and password are required." });
     }
 
     if (String(password).length < 6) {
@@ -15,26 +15,26 @@ async function registerAdmin(req, res) {
 
     const normalizedUsername = String(username).trim();
 
-    const existingAdmin = await prisma.admin.findUnique({ where: { username: normalizedUsername } });
-    if (existingAdmin) {
-      return res.status(409).json({ message: "username already exists." });
+    const existingUser = await prisma.user.findUnique({ where: { username: normalizedUsername } });
+    if (existingUser) {
+      return res.status(409).json({ message: "Username already exists." });
     }
 
     // Password is hashed before storing in database.
     const password_hash = await bcrypt.hash(password, 10);
 
-    const createdAdmin = await prisma.admin.create({
+    const createdUser = await prisma.user.create({
       data: {
         username: normalizedUsername,
         passwordHash: password_hash,
+        role: "user",
       },
     });
 
     return res.status(201).json({
-      message: "Admin created successfully.",
-      admin: {
-        id: createdAdmin.id,
-        username: createdAdmin.username,
+      message: "User created successfully.",
+      user: {
+        username: createdUser.username,
       },
     });
   } catch (error) {
@@ -42,7 +42,7 @@ async function registerAdmin(req, res) {
   }
 }
 
-async function loginAdmin(req, res) {
+async function loginUser(req, res) {
   try {
     const { username, password } = req.body;
 
@@ -51,12 +51,13 @@ async function loginAdmin(req, res) {
     }
 
     const normalizedUsername = String(username).trim();
-    const admin = await prisma.admin.findUnique({ where: { username: normalizedUsername } });
-    if (!admin) {
+
+    const user = await prisma.user.findUnique({ where: { username: normalizedUsername } });
+    if (!user) {
       return res.status(401).json({ message: "Invalid credentials." });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, admin.passwordHash);
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
       return res.status(401).json({ message: "Invalid credentials." });
     }
@@ -64,9 +65,9 @@ async function loginAdmin(req, res) {
     // Simple login response; token/session can be added in next step.
     return res.status(200).json({
       message: "Login successful.",
-      admin: {
-        id: admin.id,
-        username: admin.username,
+      user: {
+        username: user.username,
+        role: user.role,
       },
     });
   } catch (error) {
@@ -75,6 +76,6 @@ async function loginAdmin(req, res) {
 }
 
 module.exports = {
-  registerAdmin,
-  loginAdmin,
+  registerUser,
+  loginUser,
 };

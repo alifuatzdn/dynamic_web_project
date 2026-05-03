@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const flightRoutes = require("./routes/flightRoutes");
 const ticketRoutes = require("./routes/ticketRoutes");
-const adminRoutes = require("./routes/adminRoutes");
+const userRoutes = require("./routes/userRoutes");
 const cityRoutes = require("./routes/cityRoutes");
 
 const app = express();
@@ -16,7 +16,7 @@ app.get("/api/health", (req, res) => {
 
 app.use("/api/flights", flightRoutes);
 app.use("/api/tickets", ticketRoutes);
-app.use("/api/admin", adminRoutes);
+app.use("/api/user", userRoutes);
 app.use("/api/cities", cityRoutes);
 
 module.exports = app;

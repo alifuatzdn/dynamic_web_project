@@ -90,6 +90,77 @@ async function createTicket(req, res) {
   }
 }
 
+async function getAllTickets(req, res) {
+  try {
+    const tickets = await prisma.ticket.findMany({
+      include: {
+        flight: {
+          include: {
+            fromCity: true,
+            toCity: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Format BigInt to string/number
+    const formatted = tickets.map(t => ({
+      ...t,
+      id: Number(t.id),
+      flightId: Number(t.flightId),
+      totalPrice: Number(t.totalPrice),
+      flight: {
+        ...t.flight,
+        id: Number(t.flight.id),
+        price: Number(t.flight.price)
+      }
+    }));
+    return res.status(200).json(formatted);
+  } catch (error) {
+    return res.status(500).json({ message: "Server error.", error: error.message });
+  }
+}
+
+async function getUserTickets(req, res) {
+  try {
+    const { username } = req.params;
+    if (!username) {
+      return res.status(400).json({ message: "Username is required" });
+    }
+
+    const tickets = await prisma.ticket.findMany({
+      where: { passengerName: username }, // Using passengerName as linkage since schema has no userId
+      include: {
+        flight: {
+          include: {
+            fromCity: true,
+            toCity: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const formatted = tickets.map(t => ({
+      ...t,
+      id: Number(t.id),
+      flightId: Number(t.flightId),
+      totalPrice: Number(t.totalPrice),
+      flight: {
+        ...t.flight,
+        id: Number(t.flight.id),
+        price: Number(t.flight.price)
+      }
+    }));
+    return res.status(200).json(formatted);
+  } catch (error) {
+    return res.status(500).json({ message: "Server error.", error: error.message });
+  }
+}
+
 module.exports = {
   createTicket,
+  getAllTickets,
+  getUserTickets,
 };

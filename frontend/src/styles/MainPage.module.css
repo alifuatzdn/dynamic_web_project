@@ -1,0 +1,151 @@
+.mainHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background-color: #fff;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  height: 80px;
+  position: relative;
+  z-index: 10;
+}
+
+.mainHeader h1 {
+  margin: 0;
+  color: #2c3e50;
+}
+
+.profile {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+}
+
+.authButton {
+  text-decoration: none;
+  padding: 0.6rem 1rem;
+  border-radius: 4px;
+  background-color: #3498db;
+  color: white;
+  font-size: 1rem;
+  font-weight: bold;
+  margin: 0;
+  border: none;
+}
+
+.authButton:hover {
+  background-color: #2980b9;
+}
+
+.personIcon {
+  display: inline-block;
+  margin-bottom: -4px;
+  color: #3498db;
+  transition: 0.3s;
+}
+
+.personIcon:hover {
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+.personIcon:active {
+  opacity: 0.6;
+}
+
+.hero {
+  z-index: 5;
+  text-align: center;
+  padding: 4rem 2rem;
+  background-color: #ecf0f1;
+}
+
+.hero p {
+  margin: 0.7rem;
+}
+
+.searchForm {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  max-width: 800px;
+  margin: 2rem auto 0;
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.field label {
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+}
+
+.field select,
+input {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0.5rem;
+  height: 30px;
+}
+
+.searchButton {
+  align-items: flex-end;
+  display: flex;
+}
+
+.searchButton button {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 0 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.7rem;
+}
+
+.error {
+  color: #e74c3c;
+  margin-top: 1rem;
+}
+
+.flightResults {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.flightCard {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+}
+
+.cardDetails p {
+  margin: 0.5rem 0;
+}
+
+.price {
+  font-weight: bold;
+  font-size: 1.2rem;
+  color: #27ae60;
+}
