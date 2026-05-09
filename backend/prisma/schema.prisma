@@ -10,8 +10,6 @@ datasource db {
 model City {
   id         Int      @id @default(autoincrement())
   name       String   @unique @db.VarChar(100)
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
 
   fromFlights Flight[] @relation("FromCity")
   toFlights   Flight[] @relation("ToCity")
@@ -23,7 +21,6 @@ model User {
   username     String   @id @unique @db.VarChar(100)
   passwordHash String   @map("password_hash") @db.VarChar(255)
   role         String   @map("role") @db.VarChar(50)
-  createdAt    DateTime @default(now()) @map("created_at")
 
   @@map("users")
 }
@@ -33,13 +30,11 @@ model Flight {
   flightNumber   String   @unique @map("flight_number") @db.VarChar(50)
   fromCityId     Int      @map("from_city")
   toCityId       Int      @map("to_city")
-  departureTime  DateTime @map("departure_time")
-  arrivalTime    DateTime @map("arrival_time")
+  departureTime  DateTime @map("departure_time") @db.DateTime(0)
+  arrivalTime    DateTime @map("arrival_time") @db.DateTime(0)
   price          Decimal  @db.Decimal(10, 2)
   seatsTotal     Int      @map("seats_total")
   seatsAvailable Int      @map("seats_available")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
 
   fromCity City @relation("FromCity", fields: [fromCityId], references: [id])
   toCity   City @relation("ToCity", fields: [toCityId], references: [id])
@@ -59,8 +54,6 @@ model Ticket {
   seatCount      Int          @map("seat_count")
   totalPrice     Decimal      @map("total_price") @db.Decimal(10, 2)
   status         TicketStatus @default(CONFIRMED)
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
 
   flight Flight @relation(fields: [flightId], references: [id])
 

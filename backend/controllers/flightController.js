@@ -183,17 +183,31 @@ async function createFlight(req, res) {
 
 async function listFlights(req, res) {
   try {
-    const flights = await prisma.flight.findMany({
-      include: {
-        fromCity: true,
-        toCity: true,
-      },
-      orderBy: {
-        departureTime: "asc",
-      },
-    });
+    const page = parseInt(req.query.page) || 1;
+    const limit = 20;
+    const skip = (page - 1) * limit;
 
-    return res.status(200).json(flights.map(mapFlightRecord));
+    const [flights, total] = await Promise.all([
+      prisma.flight.findMany({
+        skip,
+        take: limit,
+        include: {
+          fromCity: true,
+          toCity: true,
+        },
+        orderBy: {
+          departureTime: "asc",
+        },
+      }),
+      prisma.flight.count()
+    ]);
+
+    return res.status(200).json({
+      data: flights.map(mapFlightRecord),
+      total,
+      page,
+      totalPages: Math.ceil(total / limit)
+    });
   } catch (error) {
     return res.status(500).json({ message: "Server error.", error: error.message });
   }
@@ -201,8 +215,12 @@ async function listFlights(req, res) {
 
 async function searchFlights(req, res) {
   try {
-    const { from_city, to_city, date } = req.query;
+    const { from_city, to_city, date, page: queryPage } = req.query;
     const where = {};
+
+    const page = parseInt(queryPage) || 1;
+    const limit = 20;
+    const skip = (page - 1) * limit;
 
     if (from_city) {
       where.fromCityId = Number(from_city);
@@ -228,18 +246,28 @@ async function searchFlights(req, res) {
       };
     }
 
-    const flights = await prisma.flight.findMany({
-      where,
-      include: {
-        fromCity: true,
-        toCity: true,
-      },
-      orderBy: {
-        departureTime: "asc",
-      },
-    });
+    const [flights, total] = await Promise.all([
+      prisma.flight.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          fromCity: true,
+          toCity: true,
+        },
+        orderBy: {
+          departureTime: "asc",
+        },
+      }),
+      prisma.flight.count({ where })
+    ]);
 
-    return res.status(200).json(flights.map(mapFlightRecord));
+    return res.status(200).json({
+      data: flights.map(mapFlightRecord),
+      total,
+      page,
+      totalPages: Math.ceil(total / limit)
+    });
   } catch (error) {
     return res.status(500).json({ message: "Server error.", error: error.message });
   }

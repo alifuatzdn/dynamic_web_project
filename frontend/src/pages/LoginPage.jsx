@@ -21,7 +21,8 @@ function LoginPage() {
     setLoading(true);
     try {
       const data = await userLogin(form);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      const userToStore = { ...data.user, password: form.password };
+      localStorage.setItem('user', JSON.stringify(userToStore));
       navigate('/profile');
     } catch (err) {
       setError(err.message || 'Login failed');

@@ -101,7 +101,7 @@ async function getAllTickets(req, res) {
           }
         }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { id: 'desc' }
     });
 
     // Format BigInt to string/number
@@ -139,7 +139,7 @@ async function getUserTickets(req, res) {
           }
         }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { id: 'desc' }
     });
 
     const formatted = tickets.map(t => ({

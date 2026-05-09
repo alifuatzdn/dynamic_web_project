@@ -8,15 +8,24 @@ export async function getCities() {
   return response.json();
 }
 
-export async function searchFlights({ from_city, to_city, date }) {
+export async function searchFlights({ from_city, to_city, date, page = 1 }) {
   const params = new URLSearchParams();
   if (from_city) params.append("from_city", from_city);
   if (to_city) params.append("to_city", to_city);
   if (date) params.append("date", date);
+  params.append("page", page);
 
   const response = await fetch(`${API_BASE_URL}/flights/search?${params.toString()}`);
   if (!response.ok) {
     throw new Error("Failed to search flights");
+  }
+  return response.json();
+}
+
+export async function getFlightById(id) {
+  const response = await fetch(`${API_BASE_URL}/flights/${id}`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch flight details");
   }
   return response.json();
 }
@@ -76,8 +85,8 @@ export async function userRegister({ username, password }) {
   return data;
 }
 
-export async function getAllFlights() {
-  const response = await fetch(`${API_BASE_URL}/flights`);
+export async function getAllFlights(page = 1) {
+  const response = await fetch(`${API_BASE_URL}/flights?page=${page}`);
   if (!response.ok) {
     throw new Error("Failed to fetch flights");
   }
@@ -87,13 +96,13 @@ export async function getAllFlights() {
 function adminHeaders(credentials) {
   return {
     "Content-Type": "application/json",
-    "x-admin-username": credentials.username,
-    "x-admin-password": credentials.password,
+    "x-user-username": credentials.username,
+    "x-user-password": credentials.password,
   };
 }
 
 export async function createFlightAdmin(payload, credentials) {
-  const response = await fetch(`${API_BASE_URL}/flights/admin`, {
+  const response = await fetch(`${API_BASE_URL}/flights/user`, {
     method: "POST",
     headers: adminHeaders(credentials),
     body: JSON.stringify(payload),
@@ -109,7 +118,7 @@ export async function createFlightAdmin(payload, credentials) {
 }
 
 export async function updateFlightAdmin(id, payload, credentials) {
-  const response = await fetch(`${API_BASE_URL}/flights/admin/${id}`, {
+  const response = await fetch(`${API_BASE_URL}/flights/user/${id}`, {
     method: "PUT",
     headers: adminHeaders(credentials),
     body: JSON.stringify(payload),
@@ -125,7 +134,7 @@ export async function updateFlightAdmin(id, payload, credentials) {
 }
 
 export async function deleteFlightAdmin(id, credentials) {
-  const response = await fetch(`${API_BASE_URL}/flights/admin/${id}`, {
+  const response = await fetch(`${API_BASE_URL}/flights/user/${id}`, {
     method: "DELETE",
     headers: adminHeaders(credentials),
   });
