@@ -15,7 +15,7 @@ export async function searchFlights({ from_city, to_city, date, page = 1 }) {
   if (date) params.append("date", date);
   params.append("page", page);
 
-  const response = await fetch(`${API_BASE_URL}/flights/search?${params.toString()}`);
+  const response = await fetch(`${API_BASE_URL}/flights?${params.toString()}`);
   if (!response.ok) {
     throw new Error("Failed to search flights");
   }
@@ -30,11 +30,24 @@ export async function getFlightById(id) {
   return response.json();
 }
 
+function getAuthHeaders() {
+  const userStr = localStorage.getItem('user');
+  if (userStr) {
+    const user = JSON.parse(userStr);
+    return {
+      "x-user-username": user.username,
+      "x-user-password": user.password,
+    };
+  }
+  return {};
+}
+
 export async function createTicket(payload) {
   const response = await fetch(`${API_BASE_URL}/tickets`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeaders()
     },
     body: JSON.stringify(payload),
   });
@@ -85,8 +98,11 @@ export async function userRegister({ username, password }) {
   return data;
 }
 
-export async function getAllFlights(page = 1) {
-  const response = await fetch(`${API_BASE_URL}/flights?page=${page}`);
+export async function getAllFlights(page = 1, query = "") {
+  const params = new URLSearchParams();
+  params.append("page", page);
+  if (query) params.append("q", query);
+  const response = await fetch(`${API_BASE_URL}/flights?${params.toString()}`);
   if (!response.ok) {
     throw new Error("Failed to fetch flights");
   }
@@ -148,7 +164,11 @@ export async function deleteFlightAdmin(id, credentials) {
   return data;
 }
 export async function getUserTickets(username) {
-  const response = await fetch(`${API_BASE_URL}/tickets/user/${username}`);
+  const response = await fetch(`${API_BASE_URL}/tickets/user/${username}`, {
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
   if (!response.ok) {
     throw new Error("Failed to fetch user tickets");
   }
@@ -156,7 +176,11 @@ export async function getUserTickets(username) {
 }
 
 export async function getAllTickets() {
-  const response = await fetch(`${API_BASE_URL}/tickets/all`);
+  const response = await fetch(`${API_BASE_URL}/tickets/all`, {
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
   if (!response.ok) {
     throw new Error("Failed to fetch all tickets");
   }

@@ -69,7 +69,7 @@ function MainPage() {
             <select id="from_city" name="from_city" value={form.from_city} onChange={handleChange}>
               <option value="">Any origin</option>
               {cities.map((city) => (
-                <option key={city._id} value={city._id}>{city.name}</option>
+                <option key={city.id} value={city.id}>{city.name}</option>
               ))}
             </select>
           </div>
@@ -78,7 +78,7 @@ function MainPage() {
             <select id="to_city" name="to_city" value={form.to_city} onChange={handleChange}>
               <option value="">Any destination</option>
               {cities.map((city) => (
-                <option key={city._id} value={city._id}>{city.name}</option>
+                <option key={city.id} value={city.id}>{city.name}</option>
               ))}
             </select>
           </div>
@@ -97,22 +97,22 @@ function MainPage() {
 
       <section className={styles.flightResults}>
         {flights.map((flight) => (
-          <div key={flight._id} className={styles.flightCard}>
+          <div key={flight.id} className={styles.flightCard}>
             <div className={styles.cardHeader}>
-              <strong className={styles.cityLeft}>{flight.from_city?.name}</strong>
+              <strong className={styles.cityLeft}>{flight.fromCity?.name}</strong>
               <div className={styles.arrow}>
                 <FaArrowRight />
               </div>
-              <strong className={styles.cityRight}>{flight.to_city?.name}</strong>
+              <strong className={styles.cityRight}>{flight.toCity?.name}</strong>
             </div>
             <div className={styles.cardDetails}>
-              <p><strong>Flight:</strong> {flight.flight_number}</p>
-              <p><strong>Departure:</strong> {new Date(flight.departure_time).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</p>
-              <p><strong>Arrival:</strong> {new Date(flight.arrival_time).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</p>
-              <p><strong>Seats Available:</strong> {flight.seats_available}</p>
+              <p><strong>Flight:</strong> {flight.flightNumber}</p>
+              <p><strong>Departure:</strong> {new Date(flight.departureTime).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</p>
+              <p><strong>Arrival:</strong> {new Date(flight.arrivalTime).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</p>
+              <p><strong>Seats Available:</strong> {flight.seatsAvailable}</p>
               <div className={styles.cardBottom}>
                 <p><strong>Price: </strong> <span className={styles.price}>{flight.price} TL</span></p>
-                <Link to={`/flight/${flight._id}`} className={styles.bookBtn}>
+                <Link to={`/flight/${flight.id}`} className={styles.bookBtn}>
                   Select &amp; Book
                 </Link>
               </div>

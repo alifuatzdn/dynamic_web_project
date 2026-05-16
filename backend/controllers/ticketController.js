@@ -1,4 +1,7 @@
-const prisma = require("../config/prisma");
+const mongoose = require("mongoose");
+const Ticket = require("../models/Ticket");
+const Flight = require("../models/Flight");
+const User = require("../models/User");
 
 async function createTicket(req, res) {
   try {
@@ -10,81 +13,55 @@ async function createTicket(req, res) {
 
     const seatsToBook = Number(seat_count || 1);
     if (!Number.isInteger(seatsToBook) || seatsToBook < 1) {
-      return res.status(400).json({ message: "seat_count must be a positive integer." });
+      return res.status(400).json({ message: "Number of seats must be a positive integer." });
     }
 
-    const flightId = Number(flight_id);
-    if (!Number.isInteger(flightId)) {
+    if (!mongoose.Types.ObjectId.isValid(flight_id)) {
       return res.status(400).json({ message: "Invalid flight id." });
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-      const flight = await tx.flight.findUnique({
-        where: { id: BigInt(flightId) },
-        select: {
-          id: true,
-          price: true,
-          seatsAvailable: true,
-        },
-      });
+    const flight = await Flight.findById(flight_id);
 
-      if (!flight) {
-        return { status: 404, message: "Flight not found." };
-      }
-
-      const updateResult = await tx.flight.updateMany({
-        where: {
-          id: BigInt(flightId),
-          seatsAvailable: { gte: seatsToBook },
-        },
-        data: {
-          seatsAvailable: { decrement: seatsToBook },
-        },
-      });
-
-      if (updateResult.count === 0) {
-        return { status: 409, message: "Not enough seats available or invalid flight." };
-      }
-
-      const totalPrice = Number(flight.price) * seatsToBook;
-
-      const ticket = await tx.ticket.create({
-        data: {
-          flightId: BigInt(flightId),
-          passengerName: passenger_name,
-          passengerEmail: passenger_email,
-          passengerPhone: passenger_phone,
-          seatCount: seatsToBook,
-          totalPrice,
-        },
-      });
-
-      return {
-        status: 201,
-        message: "Ticket booked successfully.",
-        ticket,
-        seats_available: flight.seatsAvailable - seatsToBook,
-      };
-    });
-
-    if (result.status !== 201) {
-      return res.status(result.status).json({ message: result.message });
+    if (!flight) {
+      return res.status(404).json({ message: "Flight not found." });
     }
 
-    return res.status(201).json({
-      message: result.message,
-      ticket: {
-        _id: Number(result.ticket.id),
-        flight: flightId,
-        passenger_name: result.ticket.passengerName,
-        passenger_email: result.ticket.passengerEmail,
-        passenger_phone: result.ticket.passengerPhone,
-        seat_count: result.ticket.seatCount,
-        total_price: Number(result.ticket.totalPrice),
-        status: result.ticket.status,
-      },
-      seats_available: result.seats_available,
+    if (flight.seatsAvailable < seatsToBook) {
+      return res.status(409).json({ message: "Not enough seats available." });
+    }
+
+    flight.seatsAvailable -= seatsToBook;
+    await flight.save();
+
+    const totalPrice = Number(flight.price) * seatsToBook;
+
+    const ticket = await Ticket.create({
+      user: req.user.id,
+      flight: flight_id,
+      passengerName: passenger_name,
+      passengerEmail: passenger_email,
+      passengerPhone: passenger_phone,
+      seatCount: seatsToBook,
+      totalPrice,
     });
+
+    const populatedTicket = await Ticket.findById(ticket._id)
+      .populate('user')
+      .populate({
+        path: 'flight',
+        populate: {
+          path: 'fromCity toCity'
+        }
+      });
+
+    return res.status(201).json({
+      status: 201,
+      message: "Ticket booked successfully.",
+      ticket: populatedTicket,
+      seats_available: flight.seatsAvailable,
+      total_price: totalPrice
+    });
+
   } catch (error) {
     return res.status(500).json({ message: "Server error.", error: error.message });
   }
@@ -92,31 +69,23 @@ async function createTicket(req, res) {
 
 async function getAllTickets(req, res) {
   try {
-    const tickets = await prisma.ticket.findMany({
-      include: {
-        flight: {
-          include: {
-            fromCity: true,
-            toCity: true
-          }
+    const tickets = await Ticket.find({})
+      .populate('user')
+      .populate({
+        path: 'flight',
+        populate: {
+          path: 'fromCity toCity'
         }
-      },
-      orderBy: { id: 'desc' }
-    });
+      })
+      .sort({ _id: -1 });
 
-    // Format BigInt to string/number
-    const formatted = tickets.map(t => ({
-      ...t,
-      id: Number(t.id),
-      flightId: Number(t.flightId),
-      totalPrice: Number(t.totalPrice),
-      flight: {
-        ...t.flight,
-        id: Number(t.flight.id),
-        price: Number(t.flight.price)
-      }
+    const mappedTickets = tickets.map(t => ({
+      ...t.toObject(),
+      id: t._id,
+      flightId: t.flight._id
     }));
-    return res.status(200).json(formatted);
+
+    return res.status(200).json(mappedTickets);
   } catch (error) {
     return res.status(500).json({ message: "Server error.", error: error.message });
   }
@@ -129,31 +98,36 @@ async function getUserTickets(req, res) {
       return res.status(400).json({ message: "Username is required" });
     }
 
-    const tickets = await prisma.ticket.findMany({
-      where: { passengerName: username }, // Using passengerName as linkage since schema has no userId
-      include: {
-        flight: {
-          include: {
-            fromCity: true,
-            toCity: true
-          }
-        }
-      },
-      orderBy: { id: 'desc' }
-    });
+    if (req.user.role !== "admin" && req.user.username !== username) {
+      return res.status(403).json({ message: "Access denied." });
+    }
 
-    const formatted = tickets.map(t => ({
-      ...t,
-      id: Number(t.id),
-      flightId: Number(t.flightId),
-      totalPrice: Number(t.totalPrice),
-      flight: {
-        ...t.flight,
-        id: Number(t.flight.id),
-        price: Number(t.flight.price)
+    let targetUserId = req.user.id;
+    if (req.user.role === "admin") {
+      const targetUser = await User.findOne({ username: String(username).trim() }).select('_id');
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found." });
       }
+      targetUserId = targetUser._id;
+    }
+
+    const tickets = await Ticket.find({ user: targetUserId })
+      .populate('user')
+      .populate({
+        path: 'flight',
+        populate: {
+          path: 'fromCity toCity'
+        }
+      })
+      .sort({ _id: -1 });
+
+    const mappedTickets = tickets.map(t => ({
+      ...t.toObject(),
+      id: t._id,
+      flightId: t.flight._id
     }));
-    return res.status(200).json(formatted);
+
+    return res.status(200).json(mappedTickets);
   } catch (error) {
     return res.status(500).json({ message: "Server error.", error: error.message });
   }

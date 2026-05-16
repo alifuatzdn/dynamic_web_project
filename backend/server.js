@@ -1,14 +1,12 @@
 require("dotenv").config();
 const app = require("./app");
-const prisma = require("./config/prisma");
-const seedCities = require("./utils/seedCities");
+const connectDB = require("./config/db");
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT;
 
 async function startServer() {
   try {
-    await prisma.$connect();
-    await seedCities();
+    await connectDB();
     app.listen(PORT, () => {
       console.log(`Server started on port ${PORT}`);
     });

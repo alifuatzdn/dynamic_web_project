@@ -1,23 +1,18 @@
-const prisma = require("../config/prisma");
+const City = require("../models/City");
 
 async function listCities(req, res) {
   try {
-    const cities = await prisma.city.findMany({
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
-    });
+    const cities = await City.find({}).sort({ plateCode: 1 });
 
-    const result = cities.map((city) => ({
-      _id: city.id,
-      name: city.name,
+    const mappedCities = cities.map(city => ({
+      id: city._id,
+      name: city.name
     }));
 
-    return res.status(200).json(result);
+    return res.status(200).json(mappedCities);
   } catch (error) {
     return res.status(500).json({ message: "Server error.", error: error.message });
   }
 }
 
-module.exports = {
-  listCities,
-};
+module.exports = { listCities };

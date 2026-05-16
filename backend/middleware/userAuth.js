@@ -1,5 +1,5 @@
 const bcrypt = require("bcryptjs");
-const prisma = require("../config/prisma");
+const User = require("../models/User");
 
 async function userAuth(req, res, next) {
   try {
@@ -13,9 +13,7 @@ async function userAuth(req, res, next) {
       });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { username: String(username).trim() },
-    });
+    const user = await User.findOne({ username: String(username).trim() });
 
     if (!user) {
       return res.status(401).json({ message: "Invalid user credentials." });
@@ -29,6 +27,7 @@ async function userAuth(req, res, next) {
     req.user = {
       id: user.id,
       username: user.username,
+      role: user.role,
     };
 
     return next();
@@ -37,4 +36,12 @@ async function userAuth(req, res, next) {
   }
 }
 
-module.exports = userAuth;
+function adminOnly(req, res, next) {
+  if (!req.user || req.user.role !== "admin") {
+    return res.status(403).json({ message: "Access denied. Admins only." });
+  }
+
+  return next();
+}
+
+module.exports = { userAuth, adminOnly };

@@ -22,15 +22,6 @@ function FlightDetailPage() {
   });
 
   useEffect(() => {
-    // If the user's name is already known in local storage, prefield name
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        const parsed = JSON.parse(storedUser);
-        setForm(prev => ({ ...prev, passenger_name: parsed.username }));
-      } catch (e) { }
-    }
-
     getFlightById(id)
       .then(setFlight)
       .catch(() => setError('Failed to load flight details.'))
@@ -48,7 +39,7 @@ function FlightDetailPage() {
 
     try {
       const result = await createTicket({
-        flight_id: Number(id),
+        flight_id: id,
         ...form,
         seat_count: Number(form.seat_count)
       });
@@ -69,12 +60,12 @@ function FlightDetailPage() {
       <Header />
       <div className={styles.detailContainer}>
         <div className={styles.flightInfo}>
-          <h2 style={{marginBottom: 30}}>Flight Details: {flight.from_city.name} to {flight.to_city.name}</h2>
-          <p><strong>Flight No:</strong> {flight.flight_number}</p>
-          <p><strong>Departure:</strong> {new Date(flight.departure_time).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</p>
-          <p><strong>Arrival:</strong> {new Date(flight.arrival_time).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</p>
+          <h2 style={{ marginBottom: 30 }}>Flight Details: {flight.fromCity.name} to {flight.toCity.name}</h2>
+          <p><strong>Flight No:</strong> {flight.flightNumber}</p>
+          <p><strong>Departure:</strong> {new Date(flight.departureTime).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</p>
+          <p><strong>Arrival:</strong> {new Date(flight.arrivalTime).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</p>
           <p><strong>Price per seat:</strong> {flight.price} TL</p>
-          <p><strong>Available Seats:</strong> {flight.seats_available}</p>
+          <p><strong>Available Seats:</strong> {flight.seatsAvailable}</p>
         </div>
 
         <div className={styles.formBox}>
@@ -82,7 +73,7 @@ function FlightDetailPage() {
           {formError && <p className={styles.error}>{formError}</p>}
           <form className={styles.bookingForm} onSubmit={handleBookTicket}>
             <div className={styles.field}>
-              <label>Passenger Name</label>
+              <label>Full Name</label>
               <input type="text" name="passenger_name" value={form.passenger_name} onChange={handleChange} required />
             </div>
 

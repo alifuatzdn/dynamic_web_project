@@ -26,16 +26,18 @@ function BookingConfirmationPage() {
       <Header />
       <div className={styles.confirmationContainer}>
         <h2>Booking Confirmed!</h2>
-        <p style={{marginBottom: 10}}>Thank you, {ticket.passenger_name}. Your ticket has been booked successfully.</p>
+        <p style={{ marginBottom: 10 }}>Thank you, {ticket.passengerName}. Your ticket has been booked successfully.</p>
 
         <div className={styles.ticketSummary}>
-          <p><strong>Route:</strong> {flight.from_city.name} &#8594; {flight.to_city.name}</p>
-          <p><strong>Flight No:</strong> {flight.flight_number}</p>
-          <p><strong>Departure:</strong> {new Date(flight.departure_time).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</p>
-          <p><strong>Passengers / Seats:</strong> {ticket.seat_count}</p>
-          <p><strong>Email given:</strong> {ticket.passenger_email}</p>
+          <p><strong>Username:</strong> {ticket.user?.username || '-'} </p>
+          <p><strong>Passenger Name:</strong> {ticket.passengerName}</p>
+          <p><strong>Route:</strong> {flight.fromCity.name} &#8594; {flight.toCity.name}</p>
+          <p><strong>Flight No:</strong> {flight.flightNumber}</p>
+          <p><strong>Departure:</strong> {new Date(flight.departureTime).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</p>
+          <p><strong>Passengers / Seats:</strong> {ticket.seatCount}</p>
+          <p><strong>Email given:</strong> {ticket.passengerEmail}</p>
 
-          <p className={styles.totalPrice}>Total Paid: {ticket.total_price} TL</p>
+          <p className={styles.totalPrice}>Total Paid: {ticket.totalPrice} TL</p>
         </div>
 
         <Link to="/profile" className={styles.btn}>View My Bookings</Link>

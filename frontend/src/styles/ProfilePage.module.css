@@ -90,14 +90,27 @@
   cursor: pointer;
   font-size: 0.8rem;
   color: white;
+  background-color: #3498db;
+}
+
+.inputs {
+  height: 60px;
+}
+
+.editButtons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .edit {
   background-color: #f39c12;
+  font-weight: bolder;
 }
 
 .delete {
   background-color: #c0392b;
+  font-weight: bolder;
 }
 
 .btnSmall:hover {

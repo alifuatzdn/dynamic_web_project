@@ -1,138 +1,6 @@
-const prisma = require("../config/prisma");
-
-function isValidDate(value) {
-  const date = new Date(value);
-  return !Number.isNaN(date.getTime());
-}
-
-function mapFlightRecord(flight) {
-  return {
-    _id: Number(flight.id),
-    flight_number: flight.flightNumber,
-    from_city: {
-      _id: flight.fromCity.id,
-      name: flight.fromCity.name,
-    },
-    to_city: {
-      _id: flight.toCity.id,
-      name: flight.toCity.name,
-    },
-    departure_time: flight.departureTime,
-    arrival_time: flight.arrivalTime,
-    price: Number(flight.price),
-    seats_total: flight.seatsTotal,
-    seats_available: flight.seatsAvailable,
-  };
-}
-
-async function validateFlightPayload(payload) {
-  const {
-    flight_number,
-    from_city,
-    to_city,
-    departure_time,
-    arrival_time,
-    price,
-    seats_total,
-  } = payload;
-
-  if (
-    !flight_number ||
-    !from_city ||
-    !to_city ||
-    !departure_time ||
-    !arrival_time ||
-    price === undefined ||
-    seats_total === undefined
-  ) {
-    return { valid: false, status: 400, message: "Missing required fields." };
-  }
-
-  if (!isValidDate(departure_time) || !isValidDate(arrival_time)) {
-    return { valid: false, status: 400, message: "Invalid date format." };
-  }
-
-  const departureDate = new Date(departure_time);
-  const arrivalDate = new Date(arrival_time);
-
-  if (departureDate >= arrivalDate) {
-    return { valid: false, status: 400, message: "Arrival time must be after departure time." };
-  }
-
-  if (String(from_city) === String(to_city)) {
-    return { valid: false, status: 400, message: "from_city and to_city cannot be the same." };
-  }
-
-  const fromCityId = Number(from_city);
-  const toCityId = Number(to_city);
-
-  if (!Number.isInteger(fromCityId) || !Number.isInteger(toCityId)) {
-    return { valid: false, status: 400, message: "City ids must be integers." };
-  }
-
-  const cityCount = await prisma.city.count({
-    where: {
-      id: { in: [fromCityId, toCityId] },
-    },
-  });
-
-  if (cityCount !== 2) {
-    return { valid: false, status: 400, message: "Invalid city id(s)." };
-  }
-
-  if (Number(price) < 0 || Number(seats_total) < 1) {
-    return { valid: false, status: 400, message: "price and seats_total must be valid positive values." };
-  }
-
-  return {
-    valid: true,
-    normalized: {
-      flight_number: String(flight_number).trim(),
-      from_city: fromCityId,
-      to_city: toCityId,
-      departureDate,
-      arrivalDate,
-      price: Number(price),
-      seats_total: Number(seats_total),
-    },
-  };
-}
-
-async function hasSchedulingConflict({ from_city, to_city, departureDate, arrivalDate, excludeFlightId }) {
-  const departureConflict = await prisma.flight.findFirst({
-    where: {
-      fromCityId: from_city,
-      departureTime: departureDate,
-      ...(excludeFlightId ? { id: { not: BigInt(excludeFlightId) } } : {}),
-    },
-    select: { id: true },
-  });
-
-  if (departureConflict) {
-    return {
-      conflict: true,
-      message: "Scheduling conflict: another flight already departs from this city at this time.",
-    };
-  }
-
-  const arrivalConflict = await prisma.flight.findFirst({
-    where: {
-      toCityId: to_city,
-      arrivalTime: arrivalDate,
-      ...(excludeFlightId ? { id: { not: BigInt(excludeFlightId) } } : {}),
-    },
-    select: { id: true },
-  });
-
-  if (arrivalConflict) {
-    return {
-      conflict: true,
-      message: "Scheduling conflict: another flight already arrives to this city at this time.",
-    };
-  }
-
-  return { conflict: false };
-}
+﻿const mongoose = require('mongoose');
+const Flight = require('../models/Flight');
+const { validateFlightPayload, hasSchedulingConflict } = require('../utils/flightUtils');
 
 async function createFlight(req, res) {
   try {
@@ -142,180 +10,120 @@ async function createFlight(req, res) {
     }
 
     const { flight_number, from_city, to_city, departureDate, arrivalDate, price, seats_total } = validation.normalized;
-
-    const conflictResult = await hasSchedulingConflict({
-      from_city,
-      to_city,
-      departureDate,
-      arrivalDate,
-    });
-
+    const conflictResult = await hasSchedulingConflict({ from_city, to_city, departureDate, arrivalDate });
     if (conflictResult.conflict) {
       return res.status(409).json({ message: conflictResult.message });
     }
 
-    const createdFlight = await prisma.flight.create({
-      data: {
-        flightNumber: flight_number,
-        fromCityId: from_city,
-        toCityId: to_city,
-        departureTime: departureDate,
-        arrivalTime: arrivalDate,
-        price,
-        seatsTotal: seats_total,
-        seatsAvailable: seats_total,
-      },
-      include: {
-        fromCity: true,
-        toCity: true,
-      },
+    const createdFlight = await Flight.create({
+      flightNumber: flight_number,
+      fromCity: from_city,
+      toCity: to_city,
+      departureTime: departureDate,
+      arrivalTime: arrivalDate,
+      price,
+      seatsTotal: seats_total,
+      seatsAvailable: seats_total
     });
 
-    return res.status(201).json(mapFlightRecord(createdFlight));
-  } catch (error) {
-    if (error.code === "P2002") {
-      return res.status(409).json({ message: "flight_number already exists." });
-    }
+    const populatedFlight = await Flight.findById(createdFlight._id).populate('fromCity').populate('toCity');
+    const mappedFlight = {
+      ...populatedFlight.toObject(),
+      id: populatedFlight._id,
+      fromCityId: populatedFlight.fromCity._id,
+      toCityId: populatedFlight.toCity._id
+    };
 
-    return res.status(500).json({ message: "Server error.", error: error.message });
+    return res.status(201).json({ message: 'Flight created successfully.', flight: mappedFlight });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({ message: 'Flight number already exists or conflicting schedule.' });
+    }
+    return res.status(500).json({ message: 'Server error.', error: error.message });
   }
 }
 
 async function listFlights(req, res) {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = 20;
-    const skip = (page - 1) * limit;
+    const { from_city, to_city, date, page, q } = req.query;
+    const pageNum = parseInt(page) || 1;
+    const limit = 10;
+    const query = {};
 
-    const [flights, total] = await Promise.all([
-      prisma.flight.findMany({
-        skip,
-        take: limit,
-        include: {
-          fromCity: true,
-          toCity: true,
-        },
-        orderBy: {
-          departureTime: "asc",
-        },
-      }),
-      prisma.flight.count()
-    ]);
-
-    return res.status(200).json({
-      data: flights.map(mapFlightRecord),
-      total,
-      page,
-      totalPages: Math.ceil(total / limit)
-    });
-  } catch (error) {
-    return res.status(500).json({ message: "Server error.", error: error.message });
-  }
-}
-
-async function searchFlights(req, res) {
-  try {
-    const { from_city, to_city, date, page: queryPage } = req.query;
-    const where = {};
-
-    const page = parseInt(queryPage) || 1;
-    const limit = 20;
-    const skip = (page - 1) * limit;
-
-    if (from_city) {
-      where.fromCityId = Number(from_city);
-    }
-
-    if (to_city) {
-      where.toCityId = Number(to_city);
-    }
-
+    if (from_city) query.fromCity = from_city;
+    if (to_city) query.toCity = to_city;
     if (date) {
-      if (!isValidDate(date)) {
-        return res.status(400).json({ message: "Invalid date query format." });
-      }
-
-      const dayStart = new Date(date);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(dayStart);
-      dayEnd.setDate(dayEnd.getDate() + 1);
-
-      where.departureTime = {
-        gte: dayStart,
-        lt: dayEnd,
-      };
+      const startOfDay = new Date(date);
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setUTCHours(23, 59, 59, 999);
+      query.departureTime = { $gte: startOfDay, $lte: endOfDay };
     }
 
-    const [flights, total] = await Promise.all([
-      prisma.flight.findMany({
-        where,
-        skip,
-        take: limit,
-        include: {
-          fromCity: true,
-          toCity: true,
-        },
-        orderBy: {
-          departureTime: "asc",
-        },
-      }),
-      prisma.flight.count({ where })
-    ]);
+    const trimmedQuery = String(q || '').trim();
+    if (trimmedQuery) {
+      const regex = new RegExp(trimmedQuery, 'i');
+      const orFilters = [{ flightNumber: regex }];
+      if (mongoose.Types.ObjectId.isValid(trimmedQuery)) {
+        orFilters.push({ _id: trimmedQuery });
+      }
+      query.$or = orFilters;
+    }
 
-    return res.status(200).json({
-      data: flights.map(mapFlightRecord),
-      total,
-      page,
-      totalPages: Math.ceil(total / limit)
-    });
+    const flights = await Flight.find(query)
+      .populate('fromCity')
+      .populate('toCity')
+      .sort({ departureTime: 1 })
+      .skip((pageNum - 1) * limit)
+      .limit(limit);
+
+    const total = await Flight.countDocuments(query);
+    const mappedFlights = flights.map(f => ({
+      ...f.toObject(),
+      id: f._id,
+      fromCityId: f.fromCity._id,
+      toCityId: f.toCity._id
+    }));
+
+    return res.status(200).json({ data: mappedFlights, page: pageNum, totalPages: Math.ceil(total / limit) });
   } catch (error) {
-    return res.status(500).json({ message: "Server error.", error: error.message });
+    return res.status(500).json({ message: 'Server error.', error: error.message });
   }
 }
 
 async function getFlightById(req, res) {
   try {
-    const flightId = Number(req.params.id);
-    if (!Number.isInteger(flightId)) {
-      return res.status(400).json({ message: "Invalid flight id." });
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid flight id.' });
     }
 
-    const flight = await prisma.flight.findUnique({
-      where: { id: BigInt(flightId) },
-      include: {
-        fromCity: true,
-        toCity: true,
-      },
-    });
-
+    const flight = await Flight.findById(id).populate('fromCity').populate('toCity');
     if (!flight) {
-      return res.status(404).json({ message: "Flight not found." });
+      return res.status(404).json({ message: 'Flight not found.' });
     }
 
-    return res.status(200).json(mapFlightRecord(flight));
+    return res.status(200).json({
+      ...flight.toObject(),
+      id: flight._id,
+      fromCityId: flight.fromCity._id,
+      toCityId: flight.toCity._id
+    });
   } catch (error) {
-    return res.status(500).json({ message: "Server error.", error: error.message });
+    return res.status(500).json({ message: 'Server error.', error: error.message });
   }
 }
 
 async function updateFlight(req, res) {
   try {
-    const flightId = Number(req.params.id);
-    if (!Number.isInteger(flightId)) {
-      return res.status(400).json({ message: "Invalid flight id." });
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid flight id.' });
     }
 
-    const flight = await prisma.flight.findUnique({
-      where: { id: BigInt(flightId) },
-      select: {
-        id: true,
-        seatsTotal: true,
-        seatsAvailable: true,
-      },
-    });
-
+    const flight = await Flight.findById(id);
     if (!flight) {
-      return res.status(404).json({ message: "Flight not found." });
+      return res.status(404).json({ message: 'Flight not found.' });
     }
 
     const validation = await validateFlightPayload(req.body);
@@ -324,94 +132,61 @@ async function updateFlight(req, res) {
     }
 
     const { flight_number, from_city, to_city, departureDate, arrivalDate, price, seats_total } = validation.normalized;
-
-    const conflictResult = await hasSchedulingConflict({
-      from_city,
-      to_city,
-      departureDate,
-      arrivalDate,
-      excludeFlightId: flight.id,
-    });
-
+    const conflictResult = await hasSchedulingConflict({ from_city, to_city, departureDate, arrivalDate, excludeFlightId: id });
     if (conflictResult.conflict) {
       return res.status(409).json({ message: conflictResult.message });
     }
 
-    const soldSeats = flight.seatsTotal - flight.seatsAvailable;
-    if (seats_total < soldSeats) {
-      return res.status(400).json({
-        message: "seats_total cannot be lower than already sold seats.",
-      });
+    const booked = flight.seatsTotal - flight.seatsAvailable;
+    if (seats_total < booked) {
+      return res.status(400).json({ message: 'Cannot reduce seats below ' + booked + ' booked tickets.' });
     }
 
-    const updatedFlight = await prisma.flight.update({
-      where: { id: flight.id },
-      data: {
-        flightNumber: flight_number,
-        fromCityId: from_city,
-        toCityId: to_city,
-        departureTime: departureDate,
-        arrivalTime: arrivalDate,
-        price,
-        seatsTotal: seats_total,
-        seatsAvailable: seats_total - soldSeats,
-      },
-      include: {
-        fromCity: true,
-        toCity: true,
-      },
+    flight.flightNumber = flight_number;
+    flight.fromCity = from_city;
+    flight.toCity = to_city;
+    flight.departureTime = departureDate;
+    flight.arrivalTime = arrivalDate;
+    flight.price = price;
+    flight.seatsTotal = seats_total;
+    flight.seatsAvailable = seats_total - booked;
+
+    await flight.save();
+
+    const populatedFlight = await Flight.findById(flight._id).populate('fromCity').populate('toCity');
+    return res.status(200).json({
+      message: 'Flight updated successfully.',
+      flight: {
+        ...populatedFlight.toObject(),
+        id: populatedFlight._id,
+        fromCityId: populatedFlight.fromCity._id,
+        toCityId: populatedFlight.toCity._id
+      }
     });
-
-    return res.status(200).json(mapFlightRecord(updatedFlight));
   } catch (error) {
-    if (error.code === "P2002") {
-      return res.status(409).json({ message: "flight_number already exists." });
+    if (error.code === 11000) {
+      return res.status(409).json({ message: 'Flight number already exists or conflicting schedule.' });
     }
-    return res.status(500).json({ message: "Server error.", error: error.message });
+    return res.status(500).json({ message: 'Server error.', error: error.message });
   }
 }
 
 async function deleteFlight(req, res) {
   try {
-    const flightId = Number(req.params.id);
-    if (!Number.isInteger(flightId)) {
-      return res.status(400).json({ message: "Invalid flight id." });
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid flight id.' });
     }
 
-    const flight = await prisma.flight.findUnique({
-      where: { id: BigInt(flightId) },
-      select: { id: true },
-    });
-
+    const flight = await Flight.findByIdAndDelete(id);
     if (!flight) {
-      return res.status(404).json({ message: "Flight not found." });
+      return res.status(404).json({ message: 'Flight not found.' });
     }
 
-    const ticketCount = await prisma.ticket.count({
-      where: { flightId: BigInt(flightId) },
-    });
-
-    if (ticketCount > 0) {
-      return res.status(409).json({
-        message: "Flight cannot be deleted because it has related tickets.",
-      });
-    }
-
-    await prisma.flight.delete({
-      where: { id: BigInt(flightId) },
-    });
-
-    return res.status(200).json({ message: "Flight deleted successfully." });
+    return res.status(200).json({ message: 'Flight deleted successfully.' });
   } catch (error) {
-    return res.status(500).json({ message: "Server error.", error: error.message });
+    return res.status(500).json({ message: 'Server error.', error: error.message });
   }
 }
 
-module.exports = {
-  createFlight,
-  listFlights,
-  searchFlights,
-  getFlightById,
-  updateFlight,
-  deleteFlight,
-};
+module.exports = { createFlight, listFlights, getFlightById, updateFlight, deleteFlight };
