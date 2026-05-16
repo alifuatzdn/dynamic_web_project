@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 
+// Flight schema mirrors the booking form and admin panel.
 const flightSchema = new mongoose.Schema({
   flightNumber: {
     type: String,
@@ -38,7 +39,7 @@ const flightSchema = new mongoose.Schema({
   }
 });
 
-// unique constraint on fromCity + departureTime and toCity + arrivalTime
+// Unique constraint on fromCity + departureTime and toCity + arrivalTime.
 flightSchema.index({ fromCity: 1, departureTime: 1 }, { unique: true });
 flightSchema.index({ toCity: 1, arrivalTime: 1 }, { unique: true });
 

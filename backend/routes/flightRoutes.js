@@ -13,7 +13,7 @@ const router = express.Router();
 router.get("/", listFlights);
 router.get("/:id", getFlightById);
 
-//Admin flight management endpoints.
+// Admin flight management endpoints.
 router.post("/user", userAuth, adminOnly, createFlight);
 router.put("/user/:id", userAuth, adminOnly, updateFlight);
 router.delete("/user/:id", userAuth, adminOnly, deleteFlight);

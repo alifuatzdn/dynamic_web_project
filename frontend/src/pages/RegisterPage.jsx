@@ -20,6 +20,7 @@ function RegisterPage() {
     setError('');
     setLoading(true);
     try {
+      // After register, send them to login so they can enter credentials.
       await userRegister(form);
       navigate('/login');
     } catch (err) {

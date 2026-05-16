@@ -3,40 +3,43 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import styles from '../styles/MainPage.module.css';
 import { FaUserCircle } from "react-icons/fa";
 
-function Header() {
-  const [user, setUser] = useState(() => {
-    const userStr = localStorage.getItem('user');
-    if (userStr && userStr !== "undefined") {
-      try {
-        return JSON.parse(userStr);
-      } catch (e) {
-        return null;
-      }
+function readStoredUser({ removeOnError = false } = {}) {
+  const userStr = localStorage.getItem('user');
+  if (!userStr || userStr === "undefined") {
+    return null;
+  }
+
+  try {
+    return JSON.parse(userStr);
+  } catch (e) {
+    if (removeOnError) {
+      localStorage.removeItem('user');
     }
     return null;
+  }
+}
+
+function Header() {
+  const [user, setUser] = useState(() => {
+    // Pull user once on first render so the header is not blank.
+    return readStoredUser();
   });
 
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
-
-    if (userStr && userStr !== "undefined") {
-      try {
-        const parsed = JSON.parse(userStr);
-        setUser(parsed);
-      } catch (e) {
-        console.error("User parse error", e);
-        localStorage.removeItem('user');
-        setUser(null);
-      }
-    } else {
+    // Re-check user on route changes so header stays in sync.
+    const parsed = readStoredUser({ removeOnError: true });
+    if (!parsed) {
       setUser(null);
+      return;
     }
+    setUser(parsed);
   }, [location.pathname]);
 
   const handleLogout = () => {
+    // Clear localStorage and bounce to home.
     localStorage.removeItem('user');
     setUser(null);
     navigate('/');

@@ -3,10 +3,19 @@ const Ticket = require("../models/Ticket");
 const Flight = require("../models/Flight");
 const User = require("../models/User");
 
+function mapTickets(tickets) {
+  return tickets.map(t => ({
+    ...t.toObject(),
+    id: t._id,
+    flightId: t.flight._id
+  }));
+}
+
 async function createTicket(req, res) {
   try {
     const { flight_id, passenger_name, passenger_email, passenger_phone, seat_count } = req.body;
 
+    // Basic input checks before touching the flight record.
     if (!flight_id || !passenger_name || !passenger_email || !passenger_phone) {
       return res.status(400).json({ message: "Missing required fields." });
     }
@@ -20,6 +29,7 @@ async function createTicket(req, res) {
       return res.status(400).json({ message: "Invalid flight id." });
     }
 
+    // Fetch the flight so we can validate time and seats.
     const flight = await Flight.findById(flight_id);
 
     if (!flight) {
@@ -34,6 +44,7 @@ async function createTicket(req, res) {
       return res.status(409).json({ message: "Not enough seats available." });
     }
 
+    // Reserve seats first so we don't oversell.
     flight.seatsAvailable -= seatsToBook;
     await flight.save();
 
@@ -73,6 +84,7 @@ async function createTicket(req, res) {
 
 async function getAllTickets(req, res) {
   try {
+    // Admin view: show all tickets with related user/flight info.
     const tickets = await Ticket.find({})
       .populate('user')
       .populate({
@@ -83,13 +95,7 @@ async function getAllTickets(req, res) {
       })
       .sort({ _id: -1 });
 
-    const mappedTickets = tickets.map(t => ({
-      ...t.toObject(),
-      id: t._id,
-      flightId: t.flight._id
-    }));
-
-    return res.status(200).json(mappedTickets);
+    return res.status(200).json(mapTickets(tickets));
   } catch (error) {
     return res.status(500).json({ message: "Server error.", error: error.message });
   }
@@ -102,6 +108,7 @@ async function getUserTickets(req, res) {
       return res.status(400).json({ message: "Username is required" });
     }
 
+    // Only admins or the owner can view tickets.
     if (req.user.role !== "admin" && req.user.username !== username) {
       return res.status(403).json({ message: "Access denied." });
     }
@@ -125,13 +132,7 @@ async function getUserTickets(req, res) {
       })
       .sort({ _id: -1 });
 
-    const mappedTickets = tickets.map(t => ({
-      ...t.toObject(),
-      id: t._id,
-      flightId: t.flight._id
-    }));
-
-    return res.status(200).json(mappedTickets);
+    return res.status(200).json(mapTickets(tickets));
   } catch (error) {
     return res.status(500).json({ message: "Server error.", error: error.message });
   }

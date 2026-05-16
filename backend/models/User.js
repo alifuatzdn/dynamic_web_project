@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 
+// Basic user model with role for admin permissions.
 const userSchema = new mongoose.Schema({
   username: {
     type: String,

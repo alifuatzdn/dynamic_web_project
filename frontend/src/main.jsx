@@ -10,6 +10,7 @@ import FlightDetailPage from "./pages/FlightDetailPage";
 import BookingConfirmationPage from "./pages/BookingConfirmationPage";
 import './styles/global.css';
 
+// App entry: configure routes once at the root.
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>

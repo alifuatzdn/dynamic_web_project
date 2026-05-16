@@ -5,6 +5,7 @@ async function registerUser(req, res) {
   try {
     const { username, password } = req.body;
 
+    // Keep registration rules simple for the project.
     if (!username || !password) {
       return res.status(400).json({ message: "Username and password are required." });
     }
@@ -15,11 +16,13 @@ async function registerUser(req, res) {
 
     const normalizedUsername = String(username).trim();
 
+    // Avoid duplicate usernames.
     const existingUser = await User.findOne({ username: normalizedUsername });
     if (existingUser) {
       return res.status(409).json({ message: "Username already exists." });
     }
 
+    // Hash once and store the hash only.
     const password_hash = await bcrypt.hash(password, 10);
 
     const createdUser = await User.create({
@@ -49,6 +52,7 @@ async function loginUser(req, res) {
 
     const normalizedUsername = String(username).trim();
 
+    // Find the user first, then verify password.
     const user = await User.findOne({ username: normalizedUsername });
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials." });

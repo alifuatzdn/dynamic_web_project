@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 
+// Minimal city model for dropdowns and validation.
 const citySchema = new mongoose.Schema({
   name: {
     type: String,

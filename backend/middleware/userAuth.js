@@ -13,12 +13,14 @@ async function userAuth(req, res, next) {
       });
     }
 
+    // Normalize username so accidental spaces don't break login.
     const user = await User.findOne({ username: String(username).trim() });
 
     if (!user) {
       return res.status(401).json({ message: "Invalid user credentials." });
     }
 
+    // Compare the raw password to the stored hash.
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
       return res.status(401).json({ message: "Invalid user credentials." });
@@ -37,6 +39,7 @@ async function userAuth(req, res, next) {
 }
 
 function adminOnly(req, res, next) {
+  // Tiny role gate so only admins can hit management endpoints.
   if (!req.user || req.user.role !== "admin") {
     return res.status(403).json({ message: "Access denied. Admins only." });
   }

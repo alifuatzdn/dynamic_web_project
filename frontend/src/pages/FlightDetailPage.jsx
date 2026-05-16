@@ -22,6 +22,7 @@ function FlightDetailPage() {
   });
 
   useEffect(() => {
+    // Load flight detail for the page route id.
     getFlightById(id)
       .then(setFlight)
       .catch(() => setError('Failed to load flight details.'))
@@ -38,6 +39,7 @@ function FlightDetailPage() {
     setBooking(true);
 
     try {
+      // Send booking request then jump to confirmation page.
       const result = await createTicket({
         flight_id: id,
         ...form,

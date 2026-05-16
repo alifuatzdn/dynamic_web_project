@@ -3,11 +3,13 @@ const City = require('../models/City');
 const Flight = require('../models/Flight');
 
 function isValidDate(value) {
+  // Quick guard to reject bad date strings before we touch the DB.
   const date = new Date(value);
   return !Number.isNaN(date.getTime());
 }
 
 async function validateFlightPayload(payload) {
+  // All validation in one place so create/update share the same rules.
   const { flight_number, from_city, to_city, departure_time, arrival_time, price, seats_total } = payload;
 
   if (!flight_number || !from_city || !to_city || !departure_time || !arrival_time || price === undefined || seats_total === undefined) {
@@ -33,6 +35,7 @@ async function validateFlightPayload(payload) {
     return { valid: false, status: 400, message: 'City ids must be valid object ids.' };
   }
 
+  // Make sure both city ids actually exist.
   const cityCount = await City.countDocuments({ _id: { $in: [from_city, to_city] } });
   if (cityCount !== 2) {
     return { valid: false, status: 400, message: 'Invalid city id(s).' };

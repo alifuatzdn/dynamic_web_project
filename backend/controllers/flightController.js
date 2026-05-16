@@ -2,14 +2,26 @@
 const Flight = require('../models/Flight');
 const { validateFlightPayload, hasSchedulingConflict } = require('../utils/flightUtils');
 
+function mapFlight(flight) {
+  const flightObj = flight.toObject ? flight.toObject() : flight;
+  return {
+    ...flightObj,
+    id: flightObj._id,
+    fromCityId: flightObj.fromCity?._id,
+    toCityId: flightObj.toCity?._id
+  };
+}
+
 async function createFlight(req, res) {
   try {
+    // Validate everything early so we don't create bad flights.
     const validation = await validateFlightPayload(req.body);
     if (!validation.valid) {
       return res.status(validation.status).json({ message: validation.message });
     }
 
     const { flight_number, from_city, to_city, departureDate, arrivalDate, price, seats_total } = validation.normalized;
+    // Avoid double-booking the same airport time slot.
     const conflictResult = await hasSchedulingConflict({ from_city, to_city, departureDate, arrivalDate });
     if (conflictResult.conflict) {
       return res.status(409).json({ message: conflictResult.message });
@@ -27,14 +39,7 @@ async function createFlight(req, res) {
     });
 
     const populatedFlight = await Flight.findById(createdFlight._id).populate('fromCity').populate('toCity');
-    const mappedFlight = {
-      ...populatedFlight.toObject(),
-      id: populatedFlight._id,
-      fromCityId: populatedFlight.fromCity._id,
-      toCityId: populatedFlight.toCity._id
-    };
-
-    return res.status(201).json({ message: 'Flight created successfully.', flight: mappedFlight });
+    return res.status(201).json({ message: 'Flight created successfully.', flight: mapFlight(populatedFlight) });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(409).json({ message: 'Flight number already exists or conflicting schedule.' });
@@ -61,6 +66,7 @@ async function listFlights(req, res) {
       query.departureTime = { $gte: startOfDay, $lte: endOfDay };
     }
 
+    // Default to upcoming flights unless caller explicitly asks for past ones.
     if (!includePast) {
       const now = new Date();
       if (query.departureTime && query.departureTime.$gte) {
@@ -74,6 +80,7 @@ async function listFlights(req, res) {
       }
     }
 
+    // Simple search by flight number or id.
     const trimmedQuery = String(q || '').trim();
     if (trimmedQuery) {
       const regex = new RegExp(trimmedQuery, 'i');
@@ -92,14 +99,7 @@ async function listFlights(req, res) {
       .limit(limit);
 
     const total = await Flight.countDocuments(query);
-    const mappedFlights = flights.map(f => ({
-      ...f.toObject(),
-      id: f._id,
-      fromCityId: f.fromCity._id,
-      toCityId: f.toCity._id
-    }));
-
-    return res.status(200).json({ data: mappedFlights, page: pageNum, totalPages: Math.ceil(total / limit) });
+    return res.status(200).json({ data: flights.map(mapFlight), page: pageNum, totalPages: Math.ceil(total / limit) });
   } catch (error) {
     return res.status(500).json({ message: 'Server error.', error: error.message });
   }
@@ -108,6 +108,7 @@ async function listFlights(req, res) {
 async function getFlightById(req, res) {
   try {
     const { id } = req.params;
+    // Mongoose will throw on bad ids, so I guard it here.
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: 'Invalid flight id.' });
     }
@@ -117,12 +118,7 @@ async function getFlightById(req, res) {
       return res.status(404).json({ message: 'Flight not found.' });
     }
 
-    return res.status(200).json({
-      ...flight.toObject(),
-      id: flight._id,
-      fromCityId: flight.fromCity._id,
-      toCityId: flight.toCity._id
-    });
+    return res.status(200).json(mapFlight(flight));
   } catch (error) {
     return res.status(500).json({ message: 'Server error.', error: error.message });
   }
@@ -131,6 +127,7 @@ async function getFlightById(req, res) {
 async function updateFlight(req, res) {
   try {
     const { id } = req.params;
+    // Fail fast when the id is not even a valid ObjectId.
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: 'Invalid flight id.' });
     }
@@ -146,11 +143,13 @@ async function updateFlight(req, res) {
     }
 
     const { flight_number, from_city, to_city, departureDate, arrivalDate, price, seats_total } = validation.normalized;
+    // Same conflict check as create, but we ignore this flight itself.
     const conflictResult = await hasSchedulingConflict({ from_city, to_city, departureDate, arrivalDate, excludeFlightId: id });
     if (conflictResult.conflict) {
       return res.status(409).json({ message: conflictResult.message });
     }
 
+    // Prevent shrinking capacity below already booked seats.
     const booked = flight.seatsTotal - flight.seatsAvailable;
     if (seats_total < booked) {
       return res.status(400).json({ message: 'Cannot reduce seats below ' + booked + ' booked tickets.' });
@@ -170,12 +169,7 @@ async function updateFlight(req, res) {
     const populatedFlight = await Flight.findById(flight._id).populate('fromCity').populate('toCity');
     return res.status(200).json({
       message: 'Flight updated successfully.',
-      flight: {
-        ...populatedFlight.toObject(),
-        id: populatedFlight._id,
-        fromCityId: populatedFlight.fromCity._id,
-        toCityId: populatedFlight.toCity._id
-      }
+      flight: mapFlight(populatedFlight)
     });
   } catch (error) {
     if (error.code === 11000) {
@@ -188,6 +182,7 @@ async function updateFlight(req, res) {
 async function deleteFlight(req, res) {
   try {
     const { id } = req.params;
+    // Quick input sanity check.
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: 'Invalid flight id.' });
     }

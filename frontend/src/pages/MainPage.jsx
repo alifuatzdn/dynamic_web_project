@@ -17,6 +17,7 @@ function MainPage() {
   const [searchedForm, setSearchedForm] = useState(null);
 
   useEffect(() => {
+    // Load cities and initial flight list on first visit.
     getCities().then(setCities).catch(() => setError('Failed to load cities'));
     performSearch({ from_city: '', to_city: '', date: '' }, 1);
     // eslint-disable-next-line
@@ -28,6 +29,7 @@ function MainPage() {
   }
 
   async function performSearch(searchQuery, pageNum) {
+    // Centralized search so pagination and form submit share logic.
     setError('');
     setLoading(true);
     try {
@@ -47,10 +49,12 @@ function MainPage() {
 
   function handleSubmit(e) {
     e.preventDefault();
+    // Reset to page 1 when a new search happens.
     performSearch(form, 1);
   }
 
   function handlePageChange(newPage) {
+    // Keep the last search filters when paging.
     if (searchedForm) {
       performSearch(searchedForm, newPage);
     }

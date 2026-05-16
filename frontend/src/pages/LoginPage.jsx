@@ -20,6 +20,7 @@ function LoginPage() {
     setError('');
     setLoading(true);
     try {
+      // Store password too since headers auth needs it later.
       const data = await userLogin(form);
       const userToStore = { ...data.user, password: form.password };
       localStorage.setItem('user', JSON.stringify(userToStore));

@@ -7,6 +7,7 @@ function BookingConfirmationPage() {
   const location = useLocation();
   const state = location.state;
 
+  // If user refreshes, state can be missing, so show a fallback.
   if (!state || !state.ticket || !state.flight) {
     return (
       <>

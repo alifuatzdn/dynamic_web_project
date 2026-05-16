@@ -1,3 +1,4 @@
+// Single API base so moving ports later is easy.
 const API_BASE_URL = "http://localhost:5000/api";
 
 export async function getCities() {
@@ -30,6 +31,7 @@ export async function getFlightById(id) {
   return response.json();
 }
 
+// Build auth headers from localStorage for simple header-based auth.
 function getAuthHeaders() {
   const userStr = localStorage.getItem('user');
   if (userStr) {
@@ -40,6 +42,20 @@ function getAuthHeaders() {
     };
   }
   return {};
+}
+
+async function authGet(path, errorMessage) {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(errorMessage);
+  }
+
+  return response.json();
 }
 
 export async function createTicket(payload) {
@@ -70,7 +86,6 @@ export async function userLogin({ username, password }) {
     body: JSON.stringify({ username, password }),
   });
 
-  console.log(123);
   const data = await response.json();
 
   if (!response.ok) {
@@ -110,6 +125,7 @@ export async function getAllFlights(page = 1, query = "", includePast = false) {
   return response.json();
 }
 
+// Admin endpoints accept explicit credentials (no localStorage guessing).
 function adminHeaders(credentials) {
   return {
     "Content-Type": "application/json",
@@ -164,26 +180,11 @@ export async function deleteFlightAdmin(id, credentials) {
 
   return data;
 }
+
 export async function getUserTickets(username) {
-  const response = await fetch(`${API_BASE_URL}/tickets/user/${username}`, {
-    headers: {
-      ...getAuthHeaders(),
-    },
-  });
-  if (!response.ok) {
-    throw new Error("Failed to fetch user tickets");
-  }
-  return response.json();
+  return authGet(`/tickets/user/${username}`, "Failed to fetch user tickets");
 }
 
 export async function getAllTickets() {
-  const response = await fetch(`${API_BASE_URL}/tickets/all`, {
-    headers: {
-      ...getAuthHeaders(),
-    },
-  });
-  if (!response.ok) {
-    throw new Error("Failed to fetch all tickets");
-  }
-  return response.json();
+  return authGet("/tickets/all", "Failed to fetch all tickets");
 }

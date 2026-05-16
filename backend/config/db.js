@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 
+// Centralized DB connect helper so server startup stays clean.
 const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGODB_URI);

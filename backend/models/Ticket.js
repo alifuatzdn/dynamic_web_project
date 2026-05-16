@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 
+// Ticket stores booking info plus a snapshot of seat count and price.
 const ticketSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,

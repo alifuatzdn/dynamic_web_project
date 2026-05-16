@@ -4,6 +4,7 @@ const connectDB = require("./config/db");
 
 const PORT = process.env.PORT;
 
+// Boot flow: connect DB first, then start the HTTP server.
 async function startServer() {
   try {
     await connectDB();

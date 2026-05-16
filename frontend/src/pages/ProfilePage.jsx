@@ -10,6 +10,7 @@ function ProfilePage() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Basic guard: if no user in storage, send to login.
     const storedUser = localStorage.getItem('user');
     if (!storedUser) {
       navigate('/login');
@@ -20,6 +21,7 @@ function ProfilePage() {
     setAuthChecked(true);
   }, [navigate]);
 
+  // Show a tiny placeholder while auth state loads.
   if (!authChecked || !user) {
     return (
       <div>
@@ -51,6 +53,7 @@ function ProfilePage() {
 }
 
 function useDebouncedValue(value, delayMs) {
+  // Lightweight debounce hook for admin search input.
   const [debounced, setDebounced] = useState(value);
 
   useEffect(() => {
@@ -61,30 +64,45 @@ function useDebouncedValue(value, delayMs) {
   return debounced;
 }
 
+function runWithGuard(asyncWork) {
+  let isActive = true;
+  asyncWork(() => isActive);
+  return () => {
+    isActive = false;
+  };
+}
+
+function buildFlightPayload(form) {
+  return {
+    flight_number: form.flightNumber,
+    from_city: form.fromCityId,
+    to_city: form.toCityId,
+    departure_time: form.departureTime,
+    arrival_time: form.arrivalTime,
+    price: Number(form.price),
+    seats_total: Number(form.seatsTotal)
+  };
+}
+
 const UserDashboard = React.memo(function UserDashboard({ user }) {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    let isActive = true;
-    async function loadTickets() {
+    return runWithGuard(async (isActive) => {
+      // Load only the current user's tickets.
       setLoading(true);
       setError('');
       try {
         const userTix = await getUserTickets(user.username);
-        if (isActive) setTickets(userTix);
+        if (isActive()) setTickets(userTix);
       } catch (err) {
-        if (isActive) setError(err.message || 'Failed to load tickets.');
+        if (isActive()) setError(err.message || 'Failed to load tickets.');
       } finally {
-        if (isActive) setLoading(false);
+        if (isActive()) setLoading(false);
       }
-    }
-
-    loadTickets();
-    return () => {
-      isActive = false;
-    };
+    });
   }, [user.username]);
 
   return (
@@ -153,8 +171,8 @@ const AdminDashboard = React.memo(function AdminDashboard({ user }) {
   const [editForm, setEditForm] = useState({ flightNumber: '', fromCityId: '', toCityId: '', departureTime: '', arrivalTime: '', price: '', seatsTotal: '' });
 
   useEffect(() => {
-    let isActive = true;
-    async function loadMeta() {
+    return runWithGuard(async (isActive) => {
+      // Admin meta data: cities + all tickets.
       setLoadingMeta(true);
       setError('');
       try {
@@ -162,46 +180,36 @@ const AdminDashboard = React.memo(function AdminDashboard({ user }) {
           getAllTickets(),
           getCities()
         ]);
-        if (isActive) {
+        if (isActive()) {
           setTickets(allTix);
           setCities(allCities);
         }
       } catch (err) {
-        if (isActive) setError(err.message || 'Failed to load admin data.');
+        if (isActive()) setError(err.message || 'Failed to load admin data.');
       } finally {
-        if (isActive) setLoadingMeta(false);
+        if (isActive()) setLoadingMeta(false);
       }
-    }
-
-    loadMeta();
-    return () => {
-      isActive = false;
-    };
+    });
   }, []);
 
   useEffect(() => {
-    let isActive = true;
-    async function loadFlights() {
+    return runWithGuard(async (isActive) => {
+      // Flights list is paged and searchable.
       setLoadingFlights(true);
       setError('');
       try {
         const flightData = await getAllFlights(currentPage, debouncedSearch, true);
-        if (isActive) {
+        if (isActive()) {
           setFlights(flightData.data);
           setTotalPages(flightData.totalPages);
           setCurrentPage(flightData.page);
         }
       } catch (err) {
-        if (isActive) setError(err.message || 'Failed to load flights.');
+        if (isActive()) setError(err.message || 'Failed to load flights.');
       } finally {
-        if (isActive) setLoadingFlights(false);
+        if (isActive()) setLoadingFlights(false);
       }
-    }
-
-    loadFlights();
-    return () => {
-      isActive = false;
-    };
+    });
   }, [currentPage, debouncedSearch, refreshKey]);
 
   const handleCreateChange = useCallback((e) => {
@@ -217,17 +225,8 @@ const AdminDashboard = React.memo(function AdminDashboard({ user }) {
   async function handleCreateSubmit(e) {
     e.preventDefault();
     try {
-      const payload = {
-        flight_number: createForm.flightNumber,
-        from_city: createForm.fromCityId, // Removed Number() to keep ObjectId as string
-        to_city: createForm.toCityId,     // Removed Number() to keep ObjectId as string
-        departure_time: createForm.departureTime,
-        arrival_time: createForm.arrivalTime,
-        price: Number(createForm.price),
-        seats_total: Number(createForm.seatsTotal)
-      };
-
-      await createFlightAdmin(payload, credentials);
+      // Map UI form fields to the backend payload.
+      await createFlightAdmin(buildFlightPayload(createForm), credentials);
 
       setCreateForm({ flightNumber: '', fromCityId: '', toCityId: '', departureTime: '', arrivalTime: '', price: '', seatsTotal: '' });
       setRefreshKey(key => key + 1);
@@ -239,17 +238,8 @@ const AdminDashboard = React.memo(function AdminDashboard({ user }) {
   async function handleUpdateSubmit(e) {
     e.preventDefault();
     try {
-      const payload = {
-        flight_number: editForm.flightNumber,
-        from_city: editForm.fromCityId,
-        to_city: editForm.toCityId,
-        departure_time: editForm.departureTime,
-        arrival_time: editForm.arrivalTime,
-        price: Number(editForm.price),
-        seats_total: Number(editForm.seatsTotal)
-      };
-
-      await updateFlightAdmin(editingId, payload, credentials);
+      // Reuse the same payload shape for updates.
+      await updateFlightAdmin(editingId, buildFlightPayload(editForm), credentials);
 
       setEditingId(null);
       setRefreshKey(key => key + 1);
@@ -259,6 +249,7 @@ const AdminDashboard = React.memo(function AdminDashboard({ user }) {
   }
 
   async function handleDeleteFlight(id) {
+    // Simple browser confirm so we don't delete by accident.
     if (confirm('Are you sure you want to delete this flight?')) {
       try {
         await deleteFlightAdmin(id, credentials);
@@ -270,15 +261,17 @@ const AdminDashboard = React.memo(function AdminDashboard({ user }) {
   }
 
   function toLocalDatetime(dateString) {
+    // Convert ISO to datetime-local friendly format.
     const d = new Date(dateString);
     return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   }
 
   function startEditing(f) {
+    // Pre-fill edit form from the selected row.
     setEditingId(f.id);
     setEditForm({
       flightNumber: f.flightNumber,
-      fromCityId: f.fromCity.id || f.fromCity._id, // Ensure we get the ID correctly
+      fromCityId: f.fromCity.id || f.fromCity._id,
       toCityId: f.toCity.id || f.toCity._id,
       departureTime: toLocalDatetime(f.departureTime),
       arrivalTime: toLocalDatetime(f.arrivalTime),
@@ -288,6 +281,7 @@ const AdminDashboard = React.memo(function AdminDashboard({ user }) {
   }
 
   function cancelEditing() {
+    // Exit edit mode without saving.
     setEditingId(null);
   }
 
