@@ -98,10 +98,11 @@ export async function userRegister({ username, password }) {
   return data;
 }
 
-export async function getAllFlights(page = 1, query = "") {
+export async function getAllFlights(page = 1, query = "", includePast = false) {
   const params = new URLSearchParams();
   params.append("page", page);
   if (query) params.append("q", query);
+  if (includePast) params.append("include_past", "1");
   const response = await fetch(`${API_BASE_URL}/flights?${params.toString()}`);
   if (!response.ok) {
     throw new Error("Failed to fetch flights");

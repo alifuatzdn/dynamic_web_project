@@ -45,10 +45,11 @@ async function createFlight(req, res) {
 
 async function listFlights(req, res) {
   try {
-    const { from_city, to_city, date, page, q } = req.query;
+    const { from_city, to_city, date, page, q, include_past } = req.query;
     const pageNum = parseInt(page) || 1;
     const limit = 10;
     const query = {};
+    const includePast = String(include_past || '').toLowerCase() === 'true' || String(include_past) === '1';
 
     if (from_city) query.fromCity = from_city;
     if (to_city) query.toCity = to_city;
@@ -58,6 +59,19 @@ async function listFlights(req, res) {
       const endOfDay = new Date(date);
       endOfDay.setUTCHours(23, 59, 59, 999);
       query.departureTime = { $gte: startOfDay, $lte: endOfDay };
+    }
+
+    if (!includePast) {
+      const now = new Date();
+      if (query.departureTime && query.departureTime.$gte) {
+        query.departureTime.$gte = query.departureTime.$gte.getTime() > now.getTime()
+          ? query.departureTime.$gte
+          : now;
+      } else if (query.departureTime) {
+        query.departureTime.$gte = now;
+      } else {
+        query.departureTime = { $gte: now };
+      }
     }
 
     const trimmedQuery = String(q || '').trim();

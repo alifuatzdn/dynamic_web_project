@@ -185,7 +185,7 @@ const AdminDashboard = React.memo(function AdminDashboard({ user }) {
       setLoadingFlights(true);
       setError('');
       try {
-        const flightData = await getAllFlights(currentPage, debouncedSearch);
+        const flightData = await getAllFlights(currentPage, debouncedSearch, true);
         if (isActive) {
           setFlights(flightData.data);
           setTotalPages(flightData.totalPages);

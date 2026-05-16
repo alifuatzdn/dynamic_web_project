@@ -26,6 +26,10 @@ async function createTicket(req, res) {
       return res.status(404).json({ message: "Flight not found." });
     }
 
+    if (new Date(flight.departureTime).getTime() <= Date.now()) {
+      return res.status(400).json({ message: "Cannot book tickets for past flights." });
+    }
+
     if (flight.seatsAvailable < seatsToBook) {
       return res.status(409).json({ message: "Not enough seats available." });
     }
